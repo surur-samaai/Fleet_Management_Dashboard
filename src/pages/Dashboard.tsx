@@ -3,7 +3,8 @@ import { StatCard } from "@/components/StatCard";
 import { VehicleCard } from "@/components/VehicleCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
+import { useAuth } from "../context/AuthContext"; // IMPORT 1: Authentication context
+import { useNavigate } from "react-router-dom"; //  IMPORT 2: For redirection after logout
 const mockVehicles = [
   {
     id: "1",
