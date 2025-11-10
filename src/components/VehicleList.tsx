@@ -1,72 +1,192 @@
-import React, { useEffect, useState } from "react";
-import { Vehicle } from "../types/Vehicle";
-import { getVehicles, deleteVehicle } from "../api/vehicleApi";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getVehicles,
+  createVehicle,
+  updateVehicle,
+  deleteVehicle,
+} from "@/api/vehicleApi";
+import { Vehicle } from "@/types/Vehicle";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
 
-interface VehicleListProps {
-  onEdit: (vehicle: Vehicle) => void;
-}
+const Vehicles: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-const VehicleList: React.FC<VehicleListProps> = ({ onEdit }) => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [form, setForm] = useState<Vehicle>({
+    model: "",
+    licensePlate: "",
+    status: "Active",
+  });
 
-  const fetchData = async () => {
-    try {
-      const data = await getVehicles();
-      setVehicles(data);
-    } catch {
-      setError("Failed to load vehicles");
-    } finally {
-      setLoading(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // FETCH VEHICLES
+  const { data: vehicles, isLoading } = useQuery({
+    queryKey: ["vehicles"],
+    queryFn: getVehicles,
+  });
+
+  // CREATE VEHICLE
+  const createMutation = useMutation({
+    mutationFn: createVehicle,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({ title: "Vehicle created successfully" });
+      resetForm();
+    },
+    onError: () =>
+      toast({ title: "Error creating vehicle", variant: "destructive" }),
+  });
+
+  // UPDATE VEHICLE
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      vehicle,
+    }: {
+      id: number;
+      vehicle: Vehicle;
+    }) => updateVehicle(id, vehicle),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({ title: "Vehicle updated successfully" });
+      resetForm();
+    },
+    onError: () =>
+      toast({ title: "Error updating vehicle", variant: "destructive" }),
+  });
+
+  // DELETE VEHICLE
+  const deleteMutation = useMutation({
+    mutationFn: deleteVehicle,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({ title: "Vehicle deleted" });
+    },
+    onError: () =>
+      toast({ title: "Error deleting vehicle", variant: "destructive" }),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, vehicle: form });
+    } else {
+      createMutation.mutate(form);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this vehicle?")) {
-      await deleteVehicle(id);
-      fetchData();
+  const handleEdit = (vehicle: Vehicle) => {
+    setForm(vehicle);
+    setEditingId(vehicle.id!);
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Are you sure you want to delete this vehicle?")) {
+      deleteMutation.mutate(id);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const resetForm = () => {
+    setForm({ model: "", licensePlate: "", status: "Active" });
+    setEditingId(null);
+  };
 
-  if (loading) return <p>Loading vehicles...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (isLoading) return <p>Loading vehicles...</p>;
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-3">Vehicle Management</h2>
-      <table className="min-w-full border border-gray-300">
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Vehicle Management</h1>
+
+      {/* FORM */}
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-2 w-full max-w-sm"
+      >
+        <Input
+          name="model"
+          placeholder="Vehicle Model"
+          value={form.model}
+          onChange={(e) => setForm({ ...form, model: e.target.value })}
+          required
+        />
+        <Input
+          name="licensePlate"
+          placeholder="License Plate"
+          value={form.licensePlate}
+          onChange={(e) =>
+            setForm({ ...form, licensePlate: e.target.value })
+          }
+          required
+        />
+        <Select
+          value={form.status}
+          onValueChange={(value) =>
+            setForm({
+              ...form,
+              status: value as "Active" | "Inactive",
+            })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="flex gap-2">
+          <Button type="submit">
+            {editingId ? "Update Vehicle" : "Add Vehicle"}
+          </Button>
+
+          {editingId && (
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      </form>
+
+      {/* VEHICLE LIST */}
+      <table className="min-w-full border border-gray-300 text-sm">
         <thead>
           <tr className="bg-gray-100">
-            <th className="p-2 border">Model</th>
-            <th className="p-2 border">License Plate</th>
-            <th className="p-2 border">Status</th>
-            <th className="p-2 border">Actions</th>
+            <th className="border p-2">Model</th>
+            <th className="border p-2">License Plate</th>
+            <th className="border p-2">Status</th>
+            <th className="border p-2 text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {vehicles.map((v) => (
+          {vehicles?.map((v) => (
             <tr key={v.id}>
               <td className="border p-2">{v.model}</td>
               <td className="border p-2">{v.licensePlate}</td>
               <td className="border p-2">{v.status}</td>
-              <td className="border p-2 space-x-2">
-                <button
-                  onClick={() => onEdit(v)}
-                  className="px-2 py-1 bg-blue-500 text-white rounded"
-                >
+              <td className="border p-2 text-center space-x-2">
+                <Button size="sm" onClick={() => handleEdit(v)}>
                   Edit
-                </button>
-                <button
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
                   onClick={() => handleDelete(v.id!)}
-                  className="px-2 py-1 bg-red-500 text-white rounded"
                 >
                   Delete
-                </button>
+                </Button>
               </td>
             </tr>
           ))}
@@ -76,4 +196,4 @@ const VehicleList: React.FC<VehicleListProps> = ({ onEdit }) => {
   );
 };
 
-export default VehicleList;
+export default Vehicles;

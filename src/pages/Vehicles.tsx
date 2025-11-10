@@ -1,16 +1,26 @@
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getVehicles, createVehicle, updateVehicle, deleteVehicle } from "@/api/vehicleApi";
 import { Vehicle } from "@/types/Vehicle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 
+// Mock data
+const mockVehicles: Vehicle[] = [
+  { id: 1, model: "Toyota Corolla", licensePlate: "ABC123", status: "Active" },
+  { id: 2, model: "Ford Ranger", licensePlate: "XYZ987", status: "Inactive" },
+];
+
 const Vehicles: React.FC = () => {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
   const [form, setForm] = useState<Vehicle>({
     model: "",
     licensePlate: "",
@@ -18,51 +28,28 @@ const Vehicles: React.FC = () => {
   });
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // FETCH VEHICLES
-  const { data: vehicles, isLoading } = useQuery({
-    queryKey: ["vehicles"],
-    queryFn: getVehicles,
-  });
-
-  // CREATE VEHICLE
-  const createMutation = useMutation({
-    mutationFn: createVehicle,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["vehicles"]);
-      toast({ title: "Vehicle created successfully" });
-      resetForm();
-    },
-    onError: () => toast({ title: "Error creating vehicle", variant: "destructive" }),
-  });
-
-  // UPDATE VEHICLE
-  const updateMutation = useMutation({
-    mutationFn: ({ id, vehicle }: { id: number; vehicle: Vehicle }) => updateVehicle(id, vehicle),
-    onSuccess: () => {
-      queryClient.invalidateQueries(["vehicles"]);
-      toast({ title: "Vehicle updated successfully" });
-      resetForm();
-    },
-    onError: () => toast({ title: "Error updating vehicle", variant: "destructive" }),
-  });
-
-  // DELETE VEHICLE
-  const deleteMutation = useMutation({
-    mutationFn: deleteVehicle,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["vehicles"]);
-      toast({ title: "Vehicle deleted" });
-    },
-    onError: () => toast({ title: "Error deleting vehicle", variant: "destructive" }),
-  });
-
+  // ----- CRUD FUNCTIONS -----
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (editingId) {
-      updateMutation.mutate({ id: editingId, vehicle: form });
+      // UPDATE
+      const updated = vehicles.map((v) =>
+        v.id === editingId ? { ...v, ...form } : v
+      );
+      setVehicles(updated);
+      toast({ title: "Vehicle updated successfully" });
     } else {
-      createMutation.mutate(form);
+      // CREATE
+      const newVehicle: Vehicle = {
+        ...form,
+        id: vehicles.length ? vehicles[vehicles.length - 1].id! + 1 : 1,
+      };
+      setVehicles([...vehicles, newVehicle]);
+      toast({ title: "Vehicle created successfully" });
     }
+
+    resetForm();
   };
 
   const handleEdit = (vehicle: Vehicle) => {
@@ -72,7 +59,9 @@ const Vehicles: React.FC = () => {
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this vehicle?")) {
-      deleteMutation.mutate(id);
+      const filtered = vehicles.filter((v) => v.id !== id);
+      setVehicles(filtered);
+      toast({ title: "Vehicle deleted" });
     }
   };
 
@@ -81,8 +70,7 @@ const Vehicles: React.FC = () => {
     setEditingId(null);
   };
 
-  if (isLoading) return <p>Loading vehicles...</p>;
-
+  // ----- RENDER -----
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Vehicle Management</h1>
@@ -105,9 +93,13 @@ const Vehicles: React.FC = () => {
         />
         <Select
           value={form.status}
-          onValueChange={(value) => setForm({ ...form, status: value as "Active" | "Inactive" })}
+          onValueChange={(value) =>
+            setForm({ ...form, status: value as "Active" | "Inactive" })
+          }
         >
-          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="Active">Active</SelectItem>
             <SelectItem value="Inactive">Inactive</SelectItem>
@@ -115,9 +107,7 @@ const Vehicles: React.FC = () => {
         </Select>
 
         <div className="flex gap-2">
-          <Button type="submit">
-            {editingId ? "Update Vehicle" : "Add Vehicle"}
-          </Button>
+          <Button type="submit">{editingId ? "Update Vehicle" : "Add Vehicle"}</Button>
           {editingId && (
             <Button type="button" variant="outline" onClick={resetForm}>
               Cancel
@@ -137,19 +127,33 @@ const Vehicles: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {vehicles?.map((v) => (
-            <tr key={v.id}>
-              <td className="border p-2">{v.model}</td>
-              <td className="border p-2">{v.licensePlate}</td>
-              <td className="border p-2">{v.status}</td>
-              <td className="border p-2 text-center space-x-2">
-                <Button size="sm" onClick={() => handleEdit(v)}>Edit</Button>
-                <Button size="sm" variant="destructive" onClick={() => handleDelete(v.id!)}>
-                  Delete
-                </Button>
+          {vehicles.length ? (
+            vehicles.map((v) => (
+              <tr key={v.id}>
+                <td className="border p-2">{v.model}</td>
+                <td className="border p-2">{v.licensePlate}</td>
+                <td className="border p-2">{v.status}</td>
+                <td className="border p-2 text-center space-x-2">
+                  <Button size="sm" onClick={() => handleEdit(v)}>
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(v.id!)}
+                  >
+                    Delete
+                  </Button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={4} className="text-center p-2">
+                No vehicles yet
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>

@@ -12,32 +12,70 @@ const VehicleForm: React.FC<Props> = ({ onSuccess }) => {
     licensePlate: "",
     status: "Active",
   });
+
   const [error, setError] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       await createVehicle(form);
       onSuccess();
-      setForm({ model: "", licensePlate: "", status: "Active" });
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create vehicle.");
+
+      setForm({
+        model: "",
+        licensePlate: "",
+        status: "Active",
+      });
+    } catch (err: unknown) {
+      // SAFELY TYPE ERROR
+      const typedError = err as {
+        response?: { data?: { message?: string } };
+      };
+
+      setError(
+        typedError.response?.data?.message ||
+          "Failed to create vehicle."
+      );
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
-      <input name="model" placeholder="Model" value={form.model} onChange={handleChange} required />
-      <input name="licensePlate" placeholder="License Plate" value={form.licensePlate} onChange={handleChange} required />
+      <input
+        name="model"
+        placeholder="Model"
+        value={form.model}
+        onChange={handleChange}
+        required
+      />
+
+      <input
+        name="licensePlate"
+        placeholder="License Plate"
+        value={form.licensePlate}
+        onChange={handleChange}
+        required
+      />
+
       <select name="status" value={form.status} onChange={handleChange}>
         <option value="Active">Active</option>
         <option value="Inactive">Inactive</option>
       </select>
-      <button type="submit" className="bg-green-500 text-white px-3 py-1 rounded">Create</button>
+
+      <button
+        type="submit"
+        className="bg-green-500 text-white px-3 py-1 rounded"
+      >
+        Create
+      </button>
+
       {error && <p className="text-red-500">{error}</p>}
     </form>
   );
