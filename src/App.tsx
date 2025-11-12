@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"; // Import Navigate
 import React from 'react'; // Explicitly import React
 import { AuthProvider, useAuth } from './context/AuthContext'; // Import Auth Context
-
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Vehicles from "./pages/Vehicles";
