@@ -1,6 +1,18 @@
 import { Fuel, TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  BarChart,
+  Bar
+} from "recharts";
 
 const fuelData = [
   {
@@ -50,6 +62,21 @@ const monthlyStats = [
   { month: "September", total: "R 42,150", volume: "2,250 L", avg: "8.5 km/L" },
   { month: "August", total: "R 38,900", volume: "2,080 L", avg: "8.3 km/L" },
 ];
+
+const efficiencyData = fuelData.map(entry => ({
+  date: entry.date,
+  efficiency: parseFloat(entry.efficiency.replace(" km/L", "")),
+}));
+
+const costData = fuelData.map(entry => ({
+  date: entry.date,
+  cost: parseFloat(entry.cost.replace("R ", "").replace(",", "")),
+}));
+
+const volumeData = fuelData.map(entry => ({
+  date: entry.date,
+  amount: parseFloat(entry.amount.replace(" L", "")),
+}));
 
 const FuelPage = () => {
   return (
@@ -113,18 +140,63 @@ const FuelPage = () => {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Fuel className="h-5 w-5 text-primary" />
-            Fuel Consumption Trend
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px] flex items-center justify-center bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">Chart visualization will be implemented</p>
-          </div>
-        </CardContent>
-      </Card>
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2">
+      <Fuel className="h-5 w-5 text-primary" />
+      Fuel Analytics
+    </CardTitle>
+  </CardHeader>
+
+  <CardContent>
+    <Tabs defaultValue="efficiency" className="w-full">
+      <TabsList className="grid grid-cols-3 w-full">
+        <TabsTrigger value="efficiency">Efficiency</TabsTrigger>
+        <TabsTrigger value="cost">Cost</TabsTrigger>
+        <TabsTrigger value="volume">Volume</TabsTrigger>
+      </TabsList>
+
+      {/* Efficiency Chart */}
+      <TabsContent value="efficiency" className="pt-4">
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={efficiencyData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis label={{ value: "km/L", angle: -90 }} />
+            <Tooltip />
+            <Line type="monotone" dataKey="efficiency" stroke="#2563eb" strokeWidth={3} dot />
+          </LineChart>
+        </ResponsiveContainer>
+      </TabsContent>
+
+      {/* Cost Chart */}
+      <TabsContent value="cost" className="pt-4">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={costData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis label={{ value: "R", angle: -90 }} />
+            <Tooltip />
+            <Bar dataKey="cost" fill="#dc2626" />
+          </BarChart>
+        </ResponsiveContainer>
+      </TabsContent>
+
+      {/* Volume Chart */}
+      <TabsContent value="volume" className="pt-4">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={volumeData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis label={{ value: "Liters", angle: -90 }} />
+            <Tooltip />
+            <Bar dataKey="amount" fill="#16a34a" />
+          </BarChart>
+        </ResponsiveContainer>
+      </TabsContent>
+    </Tabs>
+  </CardContent>
+</Card>
+
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
