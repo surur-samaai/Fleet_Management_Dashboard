@@ -3,68 +3,40 @@ import { Wrench, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc,
+  onSnapshot,
+  Timestamp 
+} from "firebase/firestore";
+import { db } from "../context/FireBase"; //  firebase file
 
-const defaultAlerts = [
-  {
-    id: "1",
-    vehicle: "Toyota Hilux",
-    plate: "DEF-456",
-    type: "Oil Change",
-    priority: "high" as const,
-    dueDate: "2025-10-25",
-    mileage: "95,000 km",
-    status: "overdue" as const,
-  },
-  {
-    id: "2",
-    vehicle: "Mercedes Sprinter",
-    plate: "XYZ-789",
-    type: "Tire Rotation",
-    priority: "medium" as const,
-    dueDate: "2025-10-30",
-    mileage: "78,500 km",
-    status: "due-soon" as const,
-  },
-  {
-    id: "3",
-    vehicle: "Volkswagen Caddy",
-    plate: "MNO-987",
-    type: "Brake Inspection",
-    priority: "medium" as const,
-    dueDate: "2025-11-05",
-    mileage: "65,200 km",
-    status: "scheduled" as const,
-  },
-  {
-    id: "4",
-    vehicle: "Ford Transit",
-    plate: "ABC-123",
-    type: "Annual Service",
-    priority: "low" as const,
-    dueDate: "2025-11-15",
-    mileage: "82,000 km",
-    status: "scheduled" as const,
-  },
-];
+// TypeScript interfaces
+interface MaintenanceAlert {
+  id: string;
+  vehicle: string;
+  plate: string;
+  type: string;
+  priority: "high" | "medium" | "low";
+  dueDate: string;
+  mileage: string;
+  status: "overdue" | "due-soon" | "scheduled";
+  vehicle_id?: number;
+  created_at?: any;
+}
 
-const defaultRecent = [
-  {
-    id: "1",
-    vehicle: "Nissan NV200",
-    plate: "GHI-321",
-    type: "Full Service",
-    completedDate: "2025-10-15",
-    cost: "R 2,450",
-  },
-  {
-    id: "2",
-    vehicle: "Isuzu NPR",
-    plate: "JKL-654",
-    type: "Tire Replacement",
-    completedDate: "2025-10-10",
-    cost: "R 3,200",
-  },
-];
+interface RecentMaintenance {
+  id: string;
+  vehicle: string;
+  plate: string;
+  type: string;
+  completedDate: string;
+  cost: string;
+}
 
 const priorityConfig = {
   high: { className: "bg-destructive text-destructive-foreground" },
@@ -79,69 +51,141 @@ const statusConfig = {
 };
 
 const Maintenance = () => {
-  const [alerts, setAlerts] = useState(defaultAlerts);
-  const [scheduled, setScheduled] = useState<any[]>([]);
-  const [recent, setRecent] = useState(defaultRecent);
+  const [alerts, setAlerts] = useState<MaintenanceAlert[]>([]);
+  const [scheduled, setScheduled] = useState<MaintenanceAlert[]>([]);
+  const [recent, setRecent] = useState<RecentMaintenance[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 🔹 Load data from localStorage when page reloads
+  // 🔥 FETCH DATA FROM FIREBASE ON MOUNT
   useEffect(() => {
-    const storedAlerts = localStorage.getItem("maintenance_alerts");
-    const storedScheduled = localStorage.getItem("maintenance_scheduled");
-    const storedRecent = localStorage.getItem("maintenance_recent");
+    const fetchData = async () => {
+      try {
+        // Fetch maintenance alerts
+        const alertsSnapshot = await getDocs(collection(db, "maintenance_alerts"));
+        const alertsData = alertsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as MaintenanceAlert[];
+        
+        // Filter by status
+        const overdueAlerts = alertsData.filter(alert => 
+          alert.status === "overdue" || alert.status === "due-soon"
+        );
+        const scheduledAlerts = alertsData.filter(alert => 
+          alert.status === "scheduled"
+        );
 
-    if (storedAlerts) setAlerts(JSON.parse(storedAlerts));
-    if (storedScheduled) setScheduled(JSON.parse(storedScheduled));
-    if (storedRecent) setRecent(JSON.parse(storedRecent));
+        setAlerts(overdueAlerts);
+        setScheduled(scheduledAlerts);
+
+        // Fetch recent maintenance (if you have a collection for it)
+        try {
+          const recentSnapshot = await getDocs(collection(db, "maintenance_recent"));
+          const recentData = recentSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as RecentMaintenance[];
+          setRecent(recentData);
+        } catch (err) {
+          console.log("No recent maintenance collection yet");
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching maintenance data:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // 🔹 Save data to localStorage whenever it changes
+  // 🔥 REAL-TIME LISTENER (Optional - use this instead of fetchData if you want live updates)
+  /*
   useEffect(() => {
-    localStorage.setItem("maintenance_alerts", JSON.stringify(alerts));
-  }, [alerts]);
+    const unsubscribe = onSnapshot(collection(db, "maintenance_alerts"), (snapshot) => {
+      const alertsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as MaintenanceAlert[];
+      
+      const overdueAlerts = alertsData.filter(alert => 
+        alert.status === "overdue" || alert.status === "due-soon"
+      );
+      const scheduledAlerts = alertsData.filter(alert => 
+        alert.status === "scheduled"
+      );
 
-  useEffect(() => {
-    localStorage.setItem("maintenance_scheduled", JSON.stringify(scheduled));
-  }, [scheduled]);
+      setAlerts(overdueAlerts);
+      setScheduled(scheduledAlerts);
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    localStorage.setItem("maintenance_recent", JSON.stringify(recent));
-  }, [recent]);
+    return () => unsubscribe();
+  }, []);
+  */
 
   // Move alert to Scheduled
-  const handleSchedule = (alert: any) => {
-    setScheduled((prev) => [...prev, alert]);
-    setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
+  const handleSchedule = async (maintenanceAlert: MaintenanceAlert) => {
+    try {
+      // Update status in Firebase
+      const alertRef = doc(db, "maintenance_alerts", maintenanceAlert.id);
+      await updateDoc(alertRef, {
+        status: "scheduled"
+      });
+
+      // Update local state
+      setScheduled((prev) => [...prev, { ...maintenanceAlert, status: "scheduled" }]);
+      setAlerts((prev) => prev.filter((a) => a.id !== maintenanceAlert.id));
+    } catch (error) {
+      console.error("Error scheduling maintenance:", error);
+      window.alert("Failed to schedule maintenance");
+    }
   };
 
   // Mark as Completed
-  const handleMarkAsCompleted = (item: any) => {
-    const newRecent = {
-      id: String(Date.now()),
-      vehicle: item.vehicle,
-      plate: item.plate,
-      type: item.type,
-      completedDate: new Date().toISOString().split("T")[0],
-      cost: "R 0",
-    };
+  const handleMarkAsCompleted = async (item: MaintenanceAlert) => {
+    try {
+      // Create completed record
+      const newRecent = {
+        vehicle: item.vehicle,
+        plate: item.plate,
+        type: item.type,
+        completedDate: new Date().toISOString().split("T")[0],
+        cost: "R 0",
+      };
 
-    // Create +10,000 km new alert
-    const currentMileage = parseInt(item.mileage.replace(/\D/g, ""));
-    const nextMileage = currentMileage + 10000;
+      // Add to recent collection
+      await addDoc(collection(db, "maintenance_recent"), newRecent);
 
-    const newAlert = {
-      id: String(Date.now() + 1),
-      vehicle: item.vehicle,
-      plate: item.plate,
-      type: item.type,
-      priority: "low" as const,
-      dueDate: "TBD",
-      mileage: `${nextMileage.toLocaleString()} km`,
-      status: "overdue" as const,
-    };
+      // Create new alert for +10,000 km
+      const currentMileage = parseInt(item.mileage.replace(/\D/g, ""));
+      const nextMileage = currentMileage + 10000;
 
-    setRecent((prev) => [newRecent, ...prev]);
-    setScheduled((prev) => prev.filter((a) => a.id !== item.id));
-    // setAlerts((prev) => [prev, newAlert]);
+      const newAlert = {
+        vehicle: item.vehicle,
+        plate: item.plate,
+        type: item.type,
+        priority: "low",
+        dueDate: "TBD",
+        mileage: `${nextMileage.toLocaleString()} km`,
+        status: "scheduled",
+        vehicle_id: item.vehicle_id || 0,
+        created_at: Timestamp.now()
+      };
+
+      await addDoc(collection(db, "maintenance_alerts"), newAlert);
+
+      // Delete the completed alert from Firebase
+      await deleteDoc(doc(db, "maintenance_alerts", item.id));
+
+      // Update local state
+      setRecent((prev) => [{ id: String(Date.now()), ...newRecent }, ...prev]);
+      setScheduled((prev) => prev.filter((a) => a.id !== item.id));
+    } catch (error) {
+      console.error("Error completing maintenance:", error);
+      alert("Failed to mark as completed");
+    }
   };
 
   // Dynamic counts
@@ -149,11 +193,92 @@ const Maintenance = () => {
   const dueSoonCount = useMemo(() => scheduled.length, [scheduled]);
   const completedCount = useMemo(() => recent.length, [recent]);
 
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="text-xl font-semibold">Loading maintenance data...</div>
+      </div>
+    );
+  }
+
+  // 🔥 ADD SAMPLE DATA FUNCTION (for testing)
+  const addSampleData = async () => {
+    try {
+      const sampleAlerts = [
+        {
+          vehicle: "Toyota Hilux",
+          plate: "DEF-456",
+          type: "Oil Change",
+          priority: "high",
+          dueDate: "2025-10-25",
+          mileage: "95,000 km",
+          status: "overdue",
+          vehicle_id: 1,
+          created_at: Timestamp.now()
+        },
+        {
+          vehicle: "Mercedes Sprinter",
+          plate: "XYZ-789",
+          type: "Tire Rotation",
+          priority: "medium",
+          dueDate: "2025-10-30",
+          mileage: "78,500 km",
+          status: "due-soon",
+          vehicle_id: 2,
+          created_at: Timestamp.now()
+        },
+        {
+          vehicle: "Volkswagen Caddy",
+          plate: "MNO-987",
+          type: "Brake Inspection",
+          priority: "medium",
+          dueDate: "2025-11-05",
+          mileage: "65,200 km",
+          status: "scheduled",
+          vehicle_id: 3,
+          created_at: Timestamp.now()
+        },
+        {
+          vehicle: "Ford Transit",
+          plate: "ABC-123",
+          type: "Annual Service",
+          priority: "low",
+          dueDate: "2025-11-15",
+          mileage: "82,000 km",
+          status: "scheduled",
+          vehicle_id: 4,
+          created_at: Timestamp.now()
+        }
+      ];
+
+      for (const alert of sampleAlerts) {
+        await addDoc(collection(db, "maintenance_alerts"), alert);
+      }
+
+      alert("✅ Sample data added! Refresh to see it.");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error adding sample data:", error);
+      alert("❌ Failed to add sample data");
+    }
+  };
+
   return (
     <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Maintenance Management</h1>
-        <p className="text-muted-foreground mt-1">Track and schedule vehicle maintenance</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Maintenance Management</h1>
+          <p className="text-muted-foreground mt-1">Track and schedule vehicle maintenance</p>
+        </div>
+        
+        {/* 🔥 TEMPORARY: Add Sample Data Button */}
+        <Button 
+          onClick={addSampleData}
+          variant="outline"
+          className="bg-yellow-50"
+        >
+          📝 Add Sample Data
+        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -339,5 +464,4 @@ const Maintenance = () => {
     </div>
   );
 };
-
 export default Maintenance;
