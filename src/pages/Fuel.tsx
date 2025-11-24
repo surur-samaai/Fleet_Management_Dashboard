@@ -2,20 +2,55 @@ import { useState, useEffect } from "react";
 import { Fuel, TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-  BarChart,
-  Bar
-} from "recharts";
-import { db } from "../context/FireBase";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+
+const fuelData = [
+  {
+    id: "1",
+    vehicle: "Ford Transit",
+    plate: "ABC-123",
+    date: "2025-10-20",
+    amount: "45.5 L",
+    cost: "R 850",
+    efficiency: "8.5 km/L",
+    trend: "up" as const,
+  },
+  {
+    id: "2",
+    vehicle: "Nissan NV200",
+    plate: "GHI-321",
+    date: "2025-10-19",
+    amount: "38.2 L",
+    cost: "R 715",
+    efficiency: "9.2 km/L",
+    trend: "up" as const,
+  },
+  {
+    id: "3",
+    vehicle: "Mercedes Sprinter",
+    plate: "XYZ-789",
+    date: "2025-10-18",
+    amount: "52.0 L",
+    cost: "R 975",
+    efficiency: "7.8 km/L",
+    trend: "down" as const,
+  },
+  {
+    id: "4",
+    vehicle: "Isuzu NPR",
+    plate: "JKL-654",
+    date: "2025-10-17",
+    amount: "68.5 L",
+    cost: "R 1,285",
+    efficiency: "6.5 km/L",
+    trend: "down" as const,
+  },
+];
+
+const monthlyStats = [
+  { month: "October", total: "R 45,230", volume: "2,420 L", avg: "8.2 km/L" },
+  { month: "September", total: "R 42,150", volume: "2,250 L", avg: "8.5 km/L" },
+  { month: "August", total: "R 38,900", volume: "2,080 L", avg: "8.3 km/L" },
+];
 
 const FuelPage = () => {
   const [fuelData, setFuelData] = useState([]);
@@ -220,53 +255,13 @@ const FuelPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Fuel className="h-5 w-5 text-primary" />
-            Fuel Analytics
+            Fuel Consumption Trend
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="efficiency" className="w-full">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="efficiency">Efficiency</TabsTrigger>
-              <TabsTrigger value="cost">Cost</TabsTrigger>
-              <TabsTrigger value="volume">Volume</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="efficiency" className="pt-4">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={efficiencyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis label={{ value: "km/L", angle: -90, position: "insideLeft" }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="efficiency" stroke="#2563EB" strokeWidth={3} dot />
-                </LineChart>
-              </ResponsiveContainer>
-            </TabsContent>
-
-            <TabsContent value="cost" className="pt-4">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={costData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis label={{ value: "R", angle: -90, position: "insideLeft" }} />
-                  <Tooltip />
-                  <Bar dataKey="cost" fill="#DC2626" />
-                </BarChart>
-              </ResponsiveContainer>
-            </TabsContent>
-
-            <TabsContent value="volume" className="pt-4">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={volumeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis label={{ value: "Liters", angle: -90, position: "insideLeft" }} />
-                  <Tooltip />
-                  <Bar dataKey="amount" fill="#16A34A" />
-                </BarChart>
-              </ResponsiveContainer>
-            </TabsContent>
-          </Tabs>
+          <div className="h-[300px] flex items-center justify-center bg-muted/30 rounded-lg">
+            <p className="text-muted-foreground">Chart visualization will be implemented</p>
+          </div>
         </CardContent>
       </Card>
 
